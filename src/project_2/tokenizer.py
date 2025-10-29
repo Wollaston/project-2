@@ -29,6 +29,11 @@ class Pair:
             raise ValueError("Source sentence is not string")
         self.sent = self.src + " " + self.tgt
 
+    @classmethod
+    def from_json(cls, str) -> "Pair":
+        pair = json.loads(str)
+        return Pair(tgt=pair["tgt"], src=pair["srg"])
+
 
 @dataclass
 class TokenizerConfig:
