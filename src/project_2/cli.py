@@ -22,21 +22,14 @@ def test_epoch(
     model: nn.Module,
     dataloader: DataLoader,
     loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu",
 ) -> float:
     pass
 
 
 @click.command()
-@click.argument('train_file', type=click.Path(exists=True))
-@click.argument('dev_file', type=click.Path(exists=True))
-@click.argument('test_file', type=click.Path(exists=True))
-def main(
-    train_file: str,
-    dev_file: str,
-    test_file: str
-):
+@click.argument("train_file", type=click.Path(exists=True))
+@click.argument("dev_file", type=click.Path(exists=True))
+@click.argument("test_file", type=click.Path(exists=True))
+def cli(train_file: str, dev_file: str, test_file: str):
     pass
-
-if __name__ == "__main__":
-    main()
