@@ -1,6 +1,7 @@
 """
 This module implements class(es) and function(s) for dataset representation
 """
+
 from typing import Tuple
 from dataclasses import dataclass
 
@@ -19,11 +20,7 @@ class Sample:
 
 class SeqPairDataset(Dataset):
     def __init__(
-            self,
-            data_file: str,
-            tokenizer: Tokenizer,
-            max_src_len: int,
-            max_tgt_len: int
+        self, data_file: str, tokenizer: Tokenizer, max_src_len: int, max_tgt_len: int
     ):
         pass
 
@@ -32,4 +29,3 @@ class SeqPairDataset(Dataset):
 
     def __getitem__(self, idx) -> Tuple[torch.Tensor, ...]:
         pass
-
