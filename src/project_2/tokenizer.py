@@ -8,12 +8,13 @@ import json
 from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Sequence
+from typing import Dict, List, Self, Sequence
 
 BOS = "<bos>"
 EOS = "<eos>"
 PAD = "<pad>"
 UNK = "<unk>"
+SPECIAL_TOKENS = [BOS, EOS, PAD, UNK]
 
 
 @dataclass
@@ -30,9 +31,8 @@ class Pair:
         self.sent = self.src + " " + self.tgt
 
     @classmethod
-    def from_json(cls, str) -> "Pair":
-        pair = json.loads(str)
-        return Pair(tgt=pair["tgt"], src=pair["srg"])
+    def from_json(cls, pair: dict[str, str]) -> "Pair":
+        return Pair(tgt=pair["tgt"], src=pair["src"])
 
 
 @dataclass
@@ -48,7 +48,7 @@ class Tokenizer:
     idx2word: Dict[int, str] = field(init=False, default_factory=dict)
     _is_built: bool = field(init=False, default=False)
 
-    def from_file(self, fpath: str | Path):
+    def from_file(self, fpath: str | Path) -> Self:
         tokens = []
 
         with open(fpath, "r") as json_file:
@@ -69,7 +69,12 @@ class Tokenizer:
             self.word2idx[token] = i
             self.idx2word[i] = token
 
+        print(self.word2idx)
+        print(self.idx2word)
+        print(len(self.word2idx))
+        print(len(self.idx2word))
         self._is_built = True
+        return self
 
     @staticmethod
     def tokenize(sentence: str) -> List[str]:
@@ -81,6 +86,7 @@ class Tokenizer:
         return [self.word2idx.get(token, self.word2idx[UNK]) for token in tokens]
 
     def decode(self, ids: Sequence[int]) -> List[str]:
+        print(ids)
         if not self._is_built:
             raise RuntimeError("Tokenizer has not been built")
         return [self.idx2word[id_] for id_ in ids]
@@ -108,3 +114,11 @@ class Tokenizer:
     @property
     def tgt_vocab(self) -> Dict[int, str]:
         return self.idx2word
+
+    @property
+    def src_vocab_size(self) -> int:
+        return len(self.word2idx)
+
+    @property
+    def tgt_vocab_size(self) -> int:
+        return len(self.idx2word)
