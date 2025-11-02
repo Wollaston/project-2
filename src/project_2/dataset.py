@@ -43,6 +43,10 @@ class Encoding:
         ]
         return self
 
+    def _shift(self) -> Self:
+        self.encoding = self.encoding[1:]
+        return self
+
     def as_ids(self) -> list[int]:
         return self.encoding
 
@@ -62,22 +66,25 @@ class Sample:
             ._trim()
             ._add_special_tokens()
             ._pad()
-            .as_ids()
         )
         target_encoding = (
             Encoding.from_tokens(tokenizer.tokenize(pair.tgt), tokenizer, max_tgt_len)
             ._trim()
             ._add_special_tokens()
             ._pad()
-            .as_ids()
+        )
+        labels = (
+            Encoding.from_tokens(tokenizer.tokenize(pair.tgt), tokenizer, max_tgt_len)
+            ._shift()
+            ._trim()
+            ._add_special_tokens()
+            ._pad()
         )
 
-        labels = target_encoding[1:]
-
         return Sample(
-            enc_inp_ids=torch.LongTensor(source_encoding),
-            dec_inp_ids=torch.LongTensor(target_encoding),
-            label_ids=torch.LongTensor(labels),
+            enc_inp_ids=torch.LongTensor(source_encoding.as_ids()),
+            dec_inp_ids=torch.LongTensor(target_encoding.as_ids()),
+            label_ids=torch.LongTensor(labels.as_ids()),
         )
 
     def as_tuple(self) -> tuple[torch.LongTensor, torch.LongTensor, torch.LongTensor]:
