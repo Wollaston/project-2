@@ -1,4 +1,4 @@
-from typing import Callable
+from typing import Callable, Literal
 
 import click
 import torch
@@ -7,6 +7,7 @@ from torch.optim import Adam
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+import uuid
 
 from project_2.dataset import SeqPairDataset
 from project_2.model import EncoderDecoder
@@ -106,7 +107,9 @@ def test_epoch(
 @click.option("--num_enc_layers", type=click.INT)
 @click.option("--num_dec_layers", type=click.INT)
 @click.option("--dropout", type=click.FLOAT)
-@click.option("--strategy", default="greedy")
+@click.option(
+    "--strategy", default="greedy", type=click.Choice(["greedy", "beam_search"])
+)
 @click.option("--beam_width", default=5)
 def cli(
     train_file: str,
@@ -123,7 +126,7 @@ def cli(
     num_enc_layers: int,
     num_dec_layers: int,
     dropout: float,
-    strategy: str,
+    strategy: Literal["greedy", "beam_search"],
     beam_width,
 ):
     tokenizer = Tokenizer(config=TokenizerConfig()).from_file(train_file)
@@ -162,7 +165,6 @@ def cli(
     with torch.no_grad():
         model.to(device)
         for encoder_input_ids, _, labels in tqdm(test_dataloader, "Testing"):
-            [print(tokenizer.decode(ids)) for ids in encoder_input_ids]
             sequences = model.generate(
                 src_ids=encoder_input_ids,
                 bos_id=tokenizer.bos_id,
@@ -172,7 +174,13 @@ def cli(
                 beam_width=beam_width,
             )
 
+            if isinstance(encoder_input_ids, torch.Tensor):
+                encoder_input_ids = encoder_input_ids.tolist()
+            if isinstance(labels, torch.Tensor):
+                labels = labels.tolist()
+
             print("SEQ: ", sequences)
+            print("DECODE: ", [tokenizer.decode(sequence) for sequence in sequences])
             predictions = [tokenizer.decode(sequence) for sequence in sequences]
             print("PREDS: ", predictions)
             cleaned_predictions: list[list[str]] = []
@@ -182,7 +190,7 @@ def cli(
                 )
             print("CLEANED PREDS: ", cleaned_predictions)
 
-            ground_truth = [tokenizer.decode(label.tolist()) for label in labels]
+            ground_truth = [tokenizer.decode(label) for label in labels]
             cleaned_ground_truth: list[list[str]] = []
             for gold in ground_truth:
                 cleaned_ground_truth.append(
@@ -202,6 +210,28 @@ def cli(
                 num_samples += 1
 
     print(f"Average BLEU Score: {total_bleu / num_samples}")
+    with open(
+        f"E{epochs}_LR{learning_rate}_B{batch_size}_S{strategy}_{uuid.uuid4()}"
+    ) as file:
+        file.write("REPORT\n\n")
+        file.write(f"total_bleu: {total_bleu}")
+        file.write(f"num_samples: {num_samples}")
+        file.write(f"train_file: {train_file}\n")
+        file.write(f"dev_file: {dev_file}\n")
+        file.write(f"test_file: {test_file}\n")
+        file.write(f"epochs: {epochs}\n")
+        file.write(f"learning_rate: {learning_rate}\n")
+        file.write(f"batch_size: {batch_size}\n")
+        file.write(f"max_src_len: {max_src_len}\n")
+        file.write(f"max_tgt_len: {max_tgt_len}\n")
+        file.write(f"d_model: {d_model}\n")
+        file.write(f"num_heads: {num_heads}\n")
+        file.write(f"d_ff: {d_ff}\n")
+        file.write(f"num_enc_layers: {num_enc_layers}\n")
+        file.write(f"num_dec_layers: {num_dec_layers}\n")
+        file.write(f"dropout: {dropout}\n")
+        file.write(f"strategy: {strategy}\n")
+        file.write(f"beam_width: {beam_width}\n")
 
 
 if __name__ == "__main__":

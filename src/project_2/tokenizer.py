@@ -86,7 +86,6 @@ class Tokenizer:
         return [self.word2idx.get(token, self.word2idx[UNK]) for token in tokens]
 
     def decode(self, ids: Sequence[int]) -> List[str]:
-        print(ids)
         if not self._is_built:
             raise RuntimeError("Tokenizer has not been built")
         return [self.idx2word[id_] for id_ in ids]
