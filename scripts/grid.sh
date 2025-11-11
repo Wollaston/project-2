@@ -4,6 +4,7 @@
 #SBATCH --ntasks=12
 #SBATCH --mem-per-cpu=4096
 #SBATCH --nodelist=student-gpu-003
+#SBATCH --gres=gpu:1
 
 UV_CACHE_DIR=/data/$(whoami)/.cache/uv
 
