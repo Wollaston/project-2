@@ -60,7 +60,20 @@ class Trainer:
         beam_width: int,
     ) -> None:
         self.device = device
+        self.train_file = train_file
+        self.dev_file = dev_file
+        self.test_file = test_file
         self.epochs = epochs
+        self.learning_rate = learning_rate
+        self.batch_size = batch_size
+        self.max_src_len = max_src_len
+        self.max_tgt_len = max_tgt_len
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_ff = d_ff
+        self.num_enc_layers = num_enc_layers
+        self.num_dec_layers = num_dec_layers
+        self.dropout = dropout
         self.strategy = strategy
         self.beam_width = beam_width
 
@@ -174,6 +187,7 @@ class Trainer:
     def test(self) -> Self:
         with torch.no_grad():
             self.model.to(self.device)
+            #### TODO: Here
             for encoder_input_ids, _, labels in tqdm(self.test_dataloader, "Testing"):
                 sequences = self.model.generate(
                     src_ids=encoder_input_ids,
