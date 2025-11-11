@@ -69,10 +69,6 @@ class Tokenizer:
             self.word2idx[token] = i
             self.idx2word[i] = token
 
-        print(self.word2idx)
-        print(self.idx2word)
-        print(len(self.word2idx))
-        print(len(self.idx2word))
         self._is_built = True
         return self
 
