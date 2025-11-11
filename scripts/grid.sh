@@ -1,31 +1,13 @@
 #!/bin/bash
 
-uv run project-2 --epochs 8 --learning_rate 0.0001 --batch_size 64 \
-  --num_enc_layers 4 --num_dec_layers 4 --d_model 512 --num_heads 8 \
-  --d_ff 1024 --dropout 0.1 --max_src_len 50 --max_tgt_len 50 \
-  --strategy beam_search --beam_width 5 ./data/train.json ./data/dev.json ./data/test.json
+#SBATCH --job-name=grid
+#SBATCH --ntasks=12
+#SBATCH --mem-per-cpu=4096
+#SBATCH --nodelist=student-gpu-003
 
-uv run project-2 --epochs 16 --learning_rate 0.0001 --batch_size 64 \
-  --num_enc_layers 4 --num_dec_layers 4 --d_model 512 --num_heads 8 \
-  --d_ff 1024 --dropout 0.1 --max_src_len 50 --max_tgt_len 50 \
-  --strategy beam_search --beam_width 5 ./data/train.json ./data/dev.json ./data/test.json
+UV_CACHE_DIR=/data/$(whoami)/.cache/uv
 
-uv run project-2 --epochs 32 --learning_rate 0.0001 --batch_size 64 \
-  --num_enc_layers 4 --num_dec_layers 4 --d_model 512 --num_heads 8 \
-  --d_ff 1024 --dropout 0.1 --max_src_len 50 --max_tgt_len 50 \
-  --strategy beam_search --beam_width 5 ./data/train.json ./data/dev.json ./data/test.json
-
-uv run project-2 --epochs 8 --learning_rate 0.0001 --batch_size 64 \
-  --num_enc_layers 2 --num_dec_layers 2 --d_model 512 --num_heads 8 \
-  --d_ff 1024 --dropout 0.1 --max_src_len 50 --max_tgt_len 50 \
-  --strategy beam_search --beam_width 5 ./data/train.json ./data/dev.json ./data/test.json
-
-uv run project-2 --epochs 16 --learning_rate 0.0001 --batch_size 62 \
-  --num_enc_layers 2 --num_dec_layers 2 --d_model 512 --num_heads 8 \
-  --d_ff 1022 --dropout 0.1 --max_src_len 50 --max_tgt_len 50 \
-  --strategy beam_search --beam_width 5 ./data/train.json ./data/dev.json ./data/test.json
-
-uv run project-2 --epochs 32 --learning_rate 0.0001 --batch_size 62 \
-  --num_enc_layers 2 --num_dec_layers 2 --d_model 512 --num_heads 8 \
-  --d_ff 1022 --dropout 0.1 --max_src_len 50 --max_tgt_len 50 \
-  --strategy beam_search --beam_width 5 ./data/train.json ./data/dev.json ./data/test.json
+uv run project-2 --epochs 4 --learning_rate 0.0001 --batch_size $1 \
+  --num_enc_layers $2 --num_dec_layers $2 --d_model $3 --num_heads $4 \
+  --d_ff $5 --dropout 0.1 --max_src_len 50 --max_tgt_len 50 \
+  --strategy greedy ./data/train.json ./data/dev.json ./data/test.json
