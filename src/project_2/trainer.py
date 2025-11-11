@@ -231,12 +231,13 @@ class Trainer:
     def report(self) -> None:
         print(f"Average BLEU Score: {self.total_bleu / self.num_samples}")
         with open(
-            f"E{self.epochs}_LR{self.learning_rate}_B{self.batch_size}_S{self.strategy}_{uuid.uuid4()}"
+            f"E-{self.epochs}_LR-{self.learning_rate:.0e}_B-{self.batch_size}_S-{self.strategy}_{uuid.uuid4()}.txt",
+            "w",
         ) as file:
             file.write("REPORT\n\n")
-            file.write(f"total_bleu: {self.total_bleu}")
-            file.write(f"num_samples: {self.num_samples}")
-            file.write(f"average bleu: {self.total_bleu / self.num_samples}")
+            file.write(f"total_bleu: {self.total_bleu}\n")
+            file.write(f"num_samples: {self.num_samples}\n")
+            file.write(f"average bleu: {self.total_bleu / self.num_samples}\n")
             file.write(f"train_file: {self.train_file}\n")
             file.write(f"dev_file: {self.dev_file}\n")
             file.write(f"test_file: {self.test_file}\n")
