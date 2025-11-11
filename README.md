@@ -485,14 +485,11 @@ Decorate the main function with click.command() and define three click.argument 
 **Entry Point**: Use the standard Python idiom to call the main function when the script is executed directly.
 
 #### Hyperparameters to Experiment With:
-* **Learning rate**: 1e-4 to 1e-3 (Adam optimizer)
-* **Batch size**: 32, 64, 128
 * **Model depth**: `num_enc_layers`, `num_dec_layers` (1, 2, 4)
-* **Model dimension**: `d_model` (128, 256, 512)
+* **Model dimension**: `d_model` (128, 256)
 * **Attention heads**: `num_heads` (2, 4, 8) - must divide `d_model`
-* **Feedforward dimension**: `d_ff` (256, 512, 1024)
-* **Dropout**: 0.1, 0.2, 0.3
-* **Maximum sequence length**: 50, 100, 150
+* **Feedforward dimension**: `d_ff` (256, 512)
+* **Other parameters**: Choose one combination of (`batch_size`, `dropout`, `max_len`) to experiment with above hyperparameters
 
 #### Tips:
 * Start with small hyperparameters to verify your implementation works
