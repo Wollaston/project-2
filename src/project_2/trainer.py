@@ -154,6 +154,7 @@ class Trainer:
 
             if batch % 100 == 0:
                 print(f"Loss: {loss.item():>7f} [{batch}/{len(self.train_dataloader)}]")
+        self.train_loss = total_loss / len(self.train_dataloader)
 
     def _dev(self) -> None:
         self.model.eval()
@@ -185,58 +186,46 @@ class Trainer:
         self.dev_loss = total_loss / len(self.dev_dataloader)
 
     def test(self) -> Self:
-        with torch.no_grad():
-            self.model.to(self.device)
-            #### TODO: Here
-            for encoder_input_ids, _, labels in tqdm(self.test_dataloader, "Testing"):
-                sequences = self.model.generate(
-                    src_ids=encoder_input_ids,
-                    bos_id=self.tokenizer.bos_id,
-                    eos_id=self.tokenizer.eos_id,
-                    max_len=self.max_src_len,
-                    strategy=self.strategy,
-                    beam_width=self.beam_width,
+        for encoder_input_ids, _, labels in tqdm(self.test_dataloader, "Testing"):
+            sequences = self.model.generate(
+                src_ids=encoder_input_ids,
+                bos_id=self.tokenizer.bos_id,
+                eos_id=self.tokenizer.eos_id,
+                max_len=self.max_src_len,
+                strategy=self.strategy,
+                beam_width=self.beam_width,
+            )
+
+            if isinstance(encoder_input_ids, torch.Tensor):
+                encoder_input_ids = encoder_input_ids.tolist()
+            if isinstance(labels, torch.Tensor):
+                labels = labels.tolist()
+            predictions = [self.tokenizer.decode(sequence) for sequence in sequences]
+            cleaned_predictions: list[list[str]] = []
+            for prediction in predictions:
+                cleaned_predictions.append(
+                    [tok for tok in prediction if tok not in SPECIAL_TOKENS]
                 )
 
-                if isinstance(encoder_input_ids, torch.Tensor):
-                    encoder_input_ids = encoder_input_ids.tolist()
-                if isinstance(labels, torch.Tensor):
-                    labels = labels.tolist()
-
-                print("SEQ: ", sequences)
-                print(
-                    "DECODE: ",
-                    [self.tokenizer.decode(sequence) for sequence in sequences],
+            ground_truth = [self.tokenizer.decode(label) for label in labels]
+            cleaned_ground_truth: list[list[str]] = []
+            for gold in ground_truth:
+                cleaned_ground_truth.append(
+                    [tok for tok in gold if tok not in SPECIAL_TOKENS]
                 )
-                predictions = [
-                    self.tokenizer.decode(sequence) for sequence in sequences
-                ]
-                print("PREDS: ", predictions)
-                cleaned_predictions: list[list[str]] = []
-                for prediction in predictions:
-                    cleaned_predictions.append(
-                        [tok for tok in prediction if tok not in SPECIAL_TOKENS]
-                    )
-                print("CLEANED PREDS: ", cleaned_predictions)
 
-                ground_truth = [self.tokenizer.decode(label) for label in labels]
-                cleaned_ground_truth: list[list[str]] = []
-                for gold in ground_truth:
-                    cleaned_ground_truth.append(
-                        [tok for tok in gold if tok not in SPECIAL_TOKENS]
-                    )
+            laplace = SmoothingFunction()
+            for pred, gold in zip(cleaned_predictions, cleaned_ground_truth):
+                bleu = sentence_bleu(
+                    [gold],
+                    pred,
+                    weights=(1.0, 0.0, 0.0, 0.0),
+                    smoothing_function=laplace.method2,
+                )
+                print(f"PRED: {pred}\nGOLD: {gold}\nBLEU: {bleu}")
+                self.total_bleu += bleu  # pyright: ignore
+                self.num_samples += 1
 
-                laplace = SmoothingFunction()
-                for pred, gold in zip(cleaned_predictions, cleaned_ground_truth):
-                    bleu = sentence_bleu(
-                        [gold],
-                        pred,
-                        weights=(1.0, 0.0, 0.0, 0.0),
-                        smoothing_function=laplace.method2,
-                    )
-                    print(f"PRED: {pred}\nGOLD: {gold}\nBLEU: {bleu}")
-                    self.total_bleu += bleu  # pyright: ignore
-                    self.num_samples += 1
         return self
 
     def report(self) -> None:
