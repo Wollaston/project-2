@@ -114,14 +114,14 @@ class Trainer:
     def fit(self) -> Self:
         for epoch in range(self.epochs):
             print(f"Epoch: {epoch}")
-            self.train()
-            self.dev()
+            self._train()
+            self._dev()
 
             print(f"Train Loss: {self.train_loss}\tDev Loss: {self.dev_loss}")
 
         return self
 
-    def train(self) -> None:
+    def _train(self) -> None:
         self.model.train()
         self.model.to(self.device)
 
@@ -155,7 +155,7 @@ class Trainer:
             if batch % 100 == 0:
                 print(f"Loss: {loss.item():>7f} [{batch}/{len(self.train_dataloader)}]")
 
-    def dev(self) -> None:
+    def _dev(self) -> None:
         self.model.eval()
         self.model.to(self.device)
 
