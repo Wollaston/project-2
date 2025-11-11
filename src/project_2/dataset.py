@@ -43,8 +43,12 @@ class Encoding:
         ]
         return self
 
-    def _shift(self) -> Self:
+    def _shift_right(self) -> Self:
         self.encoding = self.encoding[1:]
+        return self
+
+    def _pop_eos(self) -> Self:
+        self.encoding = self.encoding[:-1]
         return self
 
     def as_ids(self) -> list[int]:
@@ -67,17 +71,21 @@ class Sample:
             ._add_special_tokens()
             ._pad()
         )
+        ## Shift left after special tokens and trimming -1
+        ## Pop off eos and then pad
         target_encoding = (
             Encoding.from_tokens(tokenizer.tokenize(pair.tgt), tokenizer, max_tgt_len)
             ._trim()
             ._add_special_tokens()
+            ._pop_eos()
             ._pad()
         )
+        ## SHIFT Right - pop off bos 1
         labels = (
             Encoding.from_tokens(tokenizer.tokenize(pair.tgt), tokenizer, max_tgt_len)
-            ._shift()
             ._trim()
             ._add_special_tokens()
+            ._shift_right()
             ._pad()
         )
 
