@@ -1,95 +1,11 @@
-from typing import Callable, Literal
+from typing import Literal
 
 import click
 import torch
-import torch.nn as nn
-from torch.optim import Adam
-from torch.utils.data import DataLoader
-from tqdm import tqdm
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
-import uuid
 
-from project_2.dataset import SeqPairDataset
-from project_2.model import EncoderDecoder
-from project_2.tokenizer import SPECIAL_TOKENS, Tokenizer, TokenizerConfig
+from project_2.trainer import Trainer
 
 device: str = "cuda" if torch.cuda.is_available() else "cpu"
-
-
-def train_epoch(
-    model: nn.Module,
-    dataloader: DataLoader[SeqPairDataset],
-    optimizer: torch.optim.Optimizer,
-    loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
-) -> float:
-    model.train()
-    model.to(device)
-
-    total_loss = 0.0
-    torch.autograd.set_detect_anomaly(True)
-
-    for batch, (encoder_input_ids, decoder_input_ids, labels) in enumerate(
-        tqdm(dataloader, "Training")
-    ):
-        encoder_input_ids = encoder_input_ids.to(device)
-        decoder_input_ids = decoder_input_ids.to(device)
-        labels = labels.to(device)
-
-        logits = model(encoder_input_ids, decoder_input_ids)
-
-        batch_size = logits.shape[0]
-        tgt_seq_len = logits.shape[1]
-        vocab_size = logits.shape[2]
-
-        logits = torch.reshape(logits, (batch_size * tgt_seq_len, vocab_size))
-        labels = torch.reshape(labels, (batch_size * tgt_seq_len,))
-
-        loss = loss_fn(logits, labels)
-
-        loss.backward()
-        optimizer.step()
-        optimizer.zero_grad()
-
-        total_loss += loss.item()
-
-        if batch % 100 == 0:
-            print(f"loss: {loss.item():>7f} [{batch}/{len(dataloader)}]")
-
-    return total_loss / len(dataloader)
-
-
-def test_epoch(
-    model: nn.Module,
-    dataloader: DataLoader[SeqPairDataset],
-    loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
-) -> float:
-    model.eval()
-    model.to(device)
-
-    total_loss = 0.0
-
-    with torch.no_grad():
-        for encoder_input_ids, decoder_input_ids, labels in tqdm(
-            dataloader, "Evaluating"
-        ):
-            encoder_input_ids = encoder_input_ids.to(device)
-            decoder_input_ids = decoder_input_ids.to(device)
-            labels = labels.to(device)
-
-            logits = model(encoder_input_ids, decoder_input_ids)
-
-            batch_size = logits.shape[0]
-            tgt_seq_len = logits.shape[1]
-            vocab_size = logits.shape[2]
-
-            logits = torch.reshape(logits, (batch_size * tgt_seq_len, vocab_size))
-            labels = torch.reshape(labels, (batch_size * tgt_seq_len,))
-
-            loss = loss_fn(logits, labels)
-
-            total_loss += loss.item()
-
-    return total_loss / len(dataloader)
 
 
 @click.command()
@@ -129,109 +45,25 @@ def cli(
     strategy: Literal["greedy", "beam_search"],
     beam_width,
 ):
-    tokenizer = Tokenizer(config=TokenizerConfig()).from_file(train_file)
-
-    train_dataset = SeqPairDataset(train_file, tokenizer, max_src_len, max_tgt_len)
-    dev_dataset = SeqPairDataset(dev_file, tokenizer, max_src_len, max_tgt_len)
-    test_dataset = SeqPairDataset(test_file, tokenizer, max_src_len, max_tgt_len)
-
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    dev_dataloader = DataLoader(dev_dataset, batch_size=batch_size, shuffle=False)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
-
-    model = EncoderDecoder(
-        src_vocab_size=tokenizer.src_vocab_size,
-        tgt_vocab_size=tokenizer.tgt_vocab_size,
+    Trainer(
+        device=device,
+        train_file=train_file,
+        dev_file=dev_file,
+        test_file=test_file,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        batch_size=batch_size,
+        max_src_len=max_src_len,
+        max_tgt_len=max_tgt_len,
         d_model=d_model,
         num_heads=num_heads,
         d_ff=d_ff,
         num_enc_layers=num_enc_layers,
         num_dec_layers=num_dec_layers,
         dropout=dropout,
-    )
-
-    optimizer = Adam(model.parameters(), lr=learning_rate)
-    loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_id)
-
-    for epoch in range(epochs):
-        print(f"Epoch: {epoch}")
-        train_loss = train_epoch(model, train_dataloader, optimizer, loss_fn)
-        dev_loss = test_epoch(model, dev_dataloader, loss_fn)
-
-        print(f"Train Loss: {train_loss}\tDev Loss: {dev_loss}")
-
-    total_bleu, num_samples = 0.0, 0.0
-
-    with torch.no_grad():
-        model.to(device)
-        for encoder_input_ids, _, labels in tqdm(test_dataloader, "Testing"):
-            sequences = model.generate(
-                src_ids=encoder_input_ids,
-                bos_id=tokenizer.bos_id,
-                eos_id=tokenizer.eos_id,
-                max_len=max_src_len,
-                strategy=strategy,
-                beam_width=beam_width,
-            )
-
-            if isinstance(encoder_input_ids, torch.Tensor):
-                encoder_input_ids = encoder_input_ids.tolist()
-            if isinstance(labels, torch.Tensor):
-                labels = labels.tolist()
-
-            print("SEQ: ", sequences)
-            print("DECODE: ", [tokenizer.decode(sequence) for sequence in sequences])
-            predictions = [tokenizer.decode(sequence) for sequence in sequences]
-            print("PREDS: ", predictions)
-            cleaned_predictions: list[list[str]] = []
-            for prediction in predictions:
-                cleaned_predictions.append(
-                    [tok for tok in prediction if tok not in SPECIAL_TOKENS]
-                )
-            print("CLEANED PREDS: ", cleaned_predictions)
-
-            ground_truth = [tokenizer.decode(label) for label in labels]
-            cleaned_ground_truth: list[list[str]] = []
-            for gold in ground_truth:
-                cleaned_ground_truth.append(
-                    [tok for tok in gold if tok not in SPECIAL_TOKENS]
-                )
-
-            laplace = SmoothingFunction()
-            for pred, gold in zip(cleaned_predictions, cleaned_ground_truth):
-                bleu = sentence_bleu(
-                    [gold],
-                    pred,
-                    weights=(1.0, 0.0, 0.0, 0.0),
-                    smoothing_function=laplace.method2,
-                )
-                print(f"PRED: {pred}\nGOLD: {gold}\nBLEU: {bleu}")
-                total_bleu += bleu
-                num_samples += 1
-
-    print(f"Average BLEU Score: {total_bleu / num_samples}")
-    with open(
-        f"E{epochs}_LR{learning_rate}_B{batch_size}_S{strategy}_{uuid.uuid4()}"
-    ) as file:
-        file.write("REPORT\n\n")
-        file.write(f"total_bleu: {total_bleu}")
-        file.write(f"num_samples: {num_samples}")
-        file.write(f"train_file: {train_file}\n")
-        file.write(f"dev_file: {dev_file}\n")
-        file.write(f"test_file: {test_file}\n")
-        file.write(f"epochs: {epochs}\n")
-        file.write(f"learning_rate: {learning_rate}\n")
-        file.write(f"batch_size: {batch_size}\n")
-        file.write(f"max_src_len: {max_src_len}\n")
-        file.write(f"max_tgt_len: {max_tgt_len}\n")
-        file.write(f"d_model: {d_model}\n")
-        file.write(f"num_heads: {num_heads}\n")
-        file.write(f"d_ff: {d_ff}\n")
-        file.write(f"num_enc_layers: {num_enc_layers}\n")
-        file.write(f"num_dec_layers: {num_dec_layers}\n")
-        file.write(f"dropout: {dropout}\n")
-        file.write(f"strategy: {strategy}\n")
-        file.write(f"beam_width: {beam_width}\n")
+        strategy=strategy,
+        beam_width=beam_width,
+    ).fit().test().report()
 
 
 if __name__ == "__main__":
