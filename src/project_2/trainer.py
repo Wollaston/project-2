@@ -1,6 +1,7 @@
 import uuid
 from typing import Literal, Self
 
+import timeit
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -36,6 +37,7 @@ class Trainer:
     train_loss: float = torch.inf
     dev_loss: float = torch.inf
     test_loss: float = torch.inf
+    test_gen_time: float = torch.inf
 
     total_bleu: int = 0
     num_samples: int = 0
@@ -194,45 +196,52 @@ class Trainer:
         self.dev_loss = total_loss / len(self.dev_dataloader)
 
     def test(self) -> Self:
-        for encoder_input_ids, _, labels in tqdm(self.test_dataloader, "Testing"):
-            sequences = self.model.generate(
-                src_ids=encoder_input_ids,
-                bos_id=self.tokenizer.bos_id,
-                eos_id=self.tokenizer.eos_id,
-                max_len=self.max_src_len,
-                strategy=self.strategy,
-                beam_width=self.beam_width,
-            )
-
-            if isinstance(encoder_input_ids, torch.Tensor):
-                encoder_input_ids = encoder_input_ids.tolist()
-            if isinstance(labels, torch.Tensor):
-                labels = labels.tolist()
-            predictions = [self.tokenizer.decode(sequence) for sequence in sequences]
-            cleaned_predictions: list[list[str]] = []
-            for prediction in predictions:
-                cleaned_predictions.append(
-                    [tok for tok in prediction if tok not in SPECIAL_TOKENS]
+        def time_test() -> None:
+            for encoder_input_ids, _, labels in tqdm(self.test_dataloader, "Testing"):
+                sequences = self.model.generate(
+                    src_ids=encoder_input_ids,
+                    bos_id=self.tokenizer.bos_id,
+                    eos_id=self.tokenizer.eos_id,
+                    max_len=self.max_src_len,
+                    strategy=self.strategy,
+                    beam_width=self.beam_width,
                 )
 
-            ground_truth = [self.tokenizer.decode(label) for label in labels]
-            cleaned_ground_truth: list[list[str]] = []
-            for gold in ground_truth:
-                cleaned_ground_truth.append(
-                    [tok for tok in gold if tok not in SPECIAL_TOKENS]
-                )
+                if isinstance(encoder_input_ids, torch.Tensor):
+                    encoder_input_ids = encoder_input_ids.tolist()
+                if isinstance(labels, torch.Tensor):
+                    labels = labels.tolist()
+                predictions = [
+                    self.tokenizer.decode(sequence) for sequence in sequences
+                ]
+                cleaned_predictions: list[list[str]] = []
+                for prediction in predictions:
+                    cleaned_predictions.append(
+                        [tok for tok in prediction if tok not in SPECIAL_TOKENS]
+                    )
 
-            laplace = SmoothingFunction()
-            for pred, gold in zip(cleaned_predictions, cleaned_ground_truth):
-                bleu = sentence_bleu(
-                    [gold],
-                    pred,
-                    weights=(1.0, 0.0, 0.0, 0.0),
-                    smoothing_function=laplace.method2,
-                )
-                print(f"PRED: {pred}\nGOLD: {gold}\nBLEU: {bleu}")
-                self.total_bleu += bleu  # pyright: ignore
-                self.num_samples += 1
+                ground_truth = [self.tokenizer.decode(label) for label in labels]
+                cleaned_ground_truth: list[list[str]] = []
+                for gold in ground_truth:
+                    cleaned_ground_truth.append(
+                        [tok for tok in gold if tok not in SPECIAL_TOKENS]
+                    )
+
+                laplace = SmoothingFunction()
+                for pred, gold in zip(cleaned_predictions, cleaned_ground_truth):
+                    bleu = sentence_bleu(
+                        [gold],
+                        pred,
+                        weights=(1.0, 0.0, 0.0, 0.0),
+                        smoothing_function=laplace.method2,
+                    )
+                    print(f"PRED: {pred}\nGOLD: {gold}\nBLEU: {bleu}")
+                    self.total_bleu += bleu  # pyright: ignore
+                    self.num_samples += 1
+
+        timer = timeit.Timer(lambda: time_test)
+        self.test_gen_time = timer.timeit(1)
+        print(f"Time taken: {self.test_gen_time:.6f} seconds")
 
         return self
 
