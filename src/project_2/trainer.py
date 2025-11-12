@@ -282,3 +282,15 @@ class Trainer:
             file.write(f"train_loss_by_epoch: {self.train_loss_by_epoch}\n")
             file.write(f"dev_loss_by_epoch: {self.dev_loss_by_epoch}\n")
         return self
+
+    def save_checkpoint(self) -> Self:
+        torch.save(
+            {
+                "epoch": self.epochs,
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+                "loss": self.train_loss,
+            },
+            f"checkpoint_{self.uuid}.pt",
+        )
+        return self

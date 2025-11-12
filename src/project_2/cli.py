@@ -27,6 +27,7 @@ device: str = "cuda" if torch.cuda.is_available() else "cpu"
     "--strategy", default="greedy", type=click.Choice(["greedy", "beam_search"])
 )
 @click.option("--beam_width", default=5)
+@click.option("--save", is_flag=True, help="Enable verbose output.")
 def cli(
     train_file: str,
     dev_file: str,
@@ -43,27 +44,37 @@ def cli(
     num_dec_layers: int,
     dropout: float,
     strategy: Literal["greedy", "beam_search"],
-    beam_width,
+    beam_width: int,
+    save: bool,
 ):
-    Trainer(
-        device=device,
-        train_file=train_file,
-        dev_file=dev_file,
-        test_file=test_file,
-        epochs=epochs,
-        learning_rate=learning_rate,
-        batch_size=batch_size,
-        max_src_len=max_src_len,
-        max_tgt_len=max_tgt_len,
-        d_model=d_model,
-        num_heads=num_heads,
-        d_ff=d_ff,
-        num_enc_layers=num_enc_layers,
-        num_dec_layers=num_dec_layers,
-        dropout=dropout,
-        strategy=strategy,
-        beam_width=beam_width,
-    ).fit().test().report().plot()
+    trainer = (
+        Trainer(
+            device=device,
+            train_file=train_file,
+            dev_file=dev_file,
+            test_file=test_file,
+            epochs=epochs,
+            learning_rate=learning_rate,
+            batch_size=batch_size,
+            max_src_len=max_src_len,
+            max_tgt_len=max_tgt_len,
+            d_model=d_model,
+            num_heads=num_heads,
+            d_ff=d_ff,
+            num_enc_layers=num_enc_layers,
+            num_dec_layers=num_dec_layers,
+            dropout=dropout,
+            strategy=strategy,
+            beam_width=beam_width,
+        )
+        .fit()
+        .test()
+        .report()
+        .plot()
+    )
+
+    if save:
+        trainer.save_checkpoint()
 
 
 if __name__ == "__main__":
