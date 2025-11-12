@@ -294,3 +294,13 @@ class Trainer:
             f"checkpoint_{self.uuid}.pt",
         )
         return self
+
+    def inference(self, checkpoint_path: str) -> Self:
+        checkpoint = torch.load(checkpoint_path, weights_only=True)
+
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+
+        self.test()
+
+        return self

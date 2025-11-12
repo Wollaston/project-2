@@ -8,7 +8,12 @@ from project_2.trainer import Trainer
 device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
 
-@click.command()
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
 @click.argument("train_file", type=click.Path(exists=True))
 @click.argument("dev_file", type=click.Path(exists=True))
 @click.argument("test_file", type=click.Path(exists=True))
@@ -28,7 +33,7 @@ device: str = "cuda" if torch.cuda.is_available() else "cpu"
 )
 @click.option("--beam_width", default=5)
 @click.option("--save", is_flag=True, help="Enable verbose output.")
-def cli(
+def train(
     train_file: str,
     dev_file: str,
     test_file: str,
@@ -46,7 +51,7 @@ def cli(
     strategy: Literal["greedy", "beam_search"],
     beam_width: int,
     save: bool,
-):
+) -> None:
     trainer = (
         Trainer(
             device=device,
@@ -75,6 +80,36 @@ def cli(
 
     if save:
         trainer.save_checkpoint()
+
+
+@cli.command()
+@click.option("--checkpoint_path")
+@click.option(
+    "--strategy", default="greedy", type=click.Choice(["greedy", "beam_search"])
+)
+@click.option("--beam_width", default=5)
+def inference(
+    checkpoint_path: str, strategy: Literal["greedy", "beam_search"], beam_width: int
+) -> None:
+    Trainer(
+        device=device,
+        train_file="./data/train.json",
+        dev_file="./data/dev.json",
+        test_file="./data/test.json",
+        epochs=4,
+        learning_rate=1e-4,
+        batch_size=32,
+        max_src_len=50,
+        max_tgt_len=50,
+        d_model=256,
+        num_heads=2,
+        d_ff=512,
+        num_enc_layers=4,
+        num_dec_layers=4,
+        dropout=0.1,
+        strategy=strategy,
+        beam_width=beam_width,
+    ).inference(checkpoint_path).report()
 
 
 if __name__ == "__main__":
