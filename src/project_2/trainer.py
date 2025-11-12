@@ -239,7 +239,7 @@ class Trainer:
                     self.total_bleu += bleu  # pyright: ignore
                     self.num_samples += 1
 
-        timer = timeit.Timer(lambda: time_test)
+        timer = timeit.Timer(lambda: time_test())
         self.test_gen_time = timer.timeit(1)
         print(f"Time taken: {self.test_gen_time:.6f} seconds")
 
