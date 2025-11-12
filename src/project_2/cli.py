@@ -63,7 +63,7 @@ def cli(
         dropout=dropout,
         strategy=strategy,
         beam_width=beam_width,
-    ).fit().test().report()
+    ).fit().test().report().plot()
 
 
 if __name__ == "__main__":

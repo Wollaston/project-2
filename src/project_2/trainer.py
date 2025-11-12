@@ -1,9 +1,10 @@
-from typing import Literal, Self
 import uuid
+from typing import Literal, Self
 
-from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+from nltk.translate.bleu_score import SmoothingFunction, sentence_bleu
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -76,6 +77,11 @@ class Trainer:
         self.dropout = dropout
         self.strategy = strategy
         self.beam_width = beam_width
+
+        self.uuid = uuid.uuid4()
+
+        self.train_loss_by_epoch: list[float] = []
+        self.dev_loss_by_epoch: list[float] = []
 
         self.tokenizer = Tokenizer(config=TokenizerConfig()).from_file(train_file)
 
@@ -151,6 +157,7 @@ class Trainer:
             self.optimizer.zero_grad()
 
             total_loss += loss.item()
+            self.train_loss_by_epoch.append(loss.item())
 
             if batch % 100 == 0:
                 print(f"Loss: {loss.item():>7f} [{batch}/{len(self.train_dataloader)}]")
@@ -182,6 +189,7 @@ class Trainer:
                 loss = self.loss_fn(logits, labels)
 
                 total_loss += loss.item()
+                self.dev_loss_by_epoch.append(loss.item())
 
         self.dev_loss = total_loss / len(self.dev_dataloader)
 
@@ -228,10 +236,18 @@ class Trainer:
 
         return self
 
-    def report(self) -> None:
+    def plot(self) -> Self:
+        plt.plot(self.train_loss_by_epoch, label="Train Loss")
+        plt.plot(self.dev_loss_by_epoch, label="Val Loss")
+        plt.legend()
+        plt.savefig(f"loss_curve_{self.uuid}.png")
+
+        return self
+
+    def report(self) -> Self:
         print(f"Average BLEU Score: {self.total_bleu / self.num_samples}")
         with open(
-            f"E-{self.epochs}_LR-{self.learning_rate:.0e}_B-{self.batch_size}_S-{self.strategy}_{uuid.uuid4()}.txt",
+            f"E-{self.epochs}_LR-{self.learning_rate:.0e}_B-{self.batch_size}_S-{self.strategy}_{self.uuid}.txt",
             "w",
         ) as file:
             file.write("REPORT\n\n")
@@ -254,3 +270,6 @@ class Trainer:
             file.write(f"dropout: {self.dropout}\n")
             file.write(f"strategy: {self.strategy}\n")
             file.write(f"beam_width: {self.beam_width}\n")
+            file.write(f"train_loss_by_epoch: {self.train_loss_by_epoch}\n")
+            file.write(f"dev_loss_by_epoch: {self.dev_loss_by_epoch}\n")
+        return self
