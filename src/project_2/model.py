@@ -224,7 +224,7 @@ class Encoder(nn.Module):
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        self.pos_emb = LearnablePosEncoding(d_model, max_len)
         self.layers = nn.ModuleList(
             [EncoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
@@ -285,7 +285,7 @@ class Decoder(nn.Module):
     ):
         super().__init__()
         self.token_emb = nn.Embedding(vocab_size, d_model, padding_idx=pad_idx)
-        self.pos_emb = PosEncoding(d_model, max_len)
+        self.pos_emb = LearnablePosEncoding(d_model, max_len)
         self.layers = nn.ModuleList(
             [DecoderLayer(d_model, num_heads, d_ff, dropout) for _ in range(num_layers)]
         )
