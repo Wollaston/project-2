@@ -91,6 +91,35 @@ class PosEncoding(nn.Module):
         return x_new
 
 
+## Ref: https://machinelearningmastery.com/positional-encodings-in-transformer-models/
+class LearnablePosEncoding(nn.Module):
+    """Learnable positional encoding module"""
+
+    def __init__(self, d_model: int, seq_len: int):
+        """
+        Assume a single data instance is a list of tokens
+
+        Args:
+            d_model (int): the size of the input embeddings
+            seq_len (int): the length of input sequence
+
+        Returns: None
+        """
+        super().__init__()
+        self.position_embeddings = nn.Embedding(seq_len, d_model)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward function
+        Args:
+            x (torch.Tensor): word embeddings for input sequence with the shape (B, seq_len, d_model)
+
+        Returns: new embeddings that add positional embeddings
+        """
+        positions = torch.arange(x.size(1), device=x.device).expand(x.size(0), -1)
+        position_embeddings = self.position_embeddings(positions)
+        return x + position_embeddings
+
+
 class MHA(nn.Module):
     """Multihead attention"""
 
