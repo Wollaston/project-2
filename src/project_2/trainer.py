@@ -81,6 +81,7 @@ class Trainer:
         self.beam_width = beam_width
 
         self.uuid = uuid.uuid4()
+        self.test_gen_time = torch.inf
 
         self.train_loss_by_epoch: list[float] = []
         self.dev_loss_by_epoch: list[float] = []
@@ -281,6 +282,7 @@ class Trainer:
             file.write(f"beam_width: {self.beam_width}\n")
             file.write(f"train_loss_by_epoch: {self.train_loss_by_epoch}\n")
             file.write(f"dev_loss_by_epoch: {self.dev_loss_by_epoch}\n")
+            file.write(f"test_gen_time: {self.test_gen_time}\n")
         return self
 
     def save_checkpoint(self) -> Self:
